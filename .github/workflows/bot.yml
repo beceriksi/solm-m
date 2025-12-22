@@ -1,0 +1,29 @@
+name: Solana Early Stage Bot
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # her saat
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Run
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          # İstersen ekle (opsiyonel): SOLANA_RPC_URL
+          # SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: python main.py
