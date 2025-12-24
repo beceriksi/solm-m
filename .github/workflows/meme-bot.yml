@@ -1,29 +1,32 @@
-name: Solana Early Stage Bot
+name: Solana Meme Bot
 
 on:
   schedule:
-    - cron: "0 * * * *"  # her saat
+    - cron: "0 * * * *"   # Saatte 1 (UTC)
   workflow_dispatch:
 
 jobs:
-  run-bot:
+  run-meme-bot:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Repo'yu çek
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Python kur
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
-        run: pip install requests
+      - name: Gerekli paketler
+        run: |
+          pip install requests
 
-      - name: Run
+      - name: Botu çalıştır
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          # İstersen ekle (opsiyonel): SOLANA_RPC_URL
+          # Opsiyonel ama önerilir (rate limit daha az olur)
           # SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
-        run: python main.py
+        run: |
+          python main.py
