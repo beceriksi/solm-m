@@ -421,6 +421,7 @@ def main():
 
     for net in NETWORKS:
         pools = gt_get(f"/networks/{net}/new_pools")
+print(f"[DEBUG] {net} new_pools sayısı:", len(pools))
 
         for p in pools:
             a = (p.get("attributes") or {})
