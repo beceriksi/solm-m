@@ -22,8 +22,6 @@ FDV_MAX = 500000
 # Genel filtreler
 VOL_LIQ_MIN = 0.5
 TXNS24_MIN = 40
-PCHG1H_MIN = 2
-PCHG1H_MAX = 60
 SCORE_MIN = 60
 
 # Yaş filtresi: 24 saatten eskiyi alma
@@ -239,8 +237,6 @@ def passes_filters(liq, fdv, vol, tx, p1):
         return False, "volliq"
     if tx < TXNS24_MIN:
         return False, "tx"
-    if not (PCHG1H_MIN <= p1 <= PCHG1H_MAX):
-        return False, "p1"
     return True, ""
 
 
