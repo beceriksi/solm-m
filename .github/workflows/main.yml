@@ -2,8 +2,8 @@ name: Solana AI Scanner Bot
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # Her 5 dakikada bir çalıştırır
-  workflow_dispatch: # İstediğin zaman manuel başlatma butonu ekler
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -15,7 +15,7 @@ jobs:
       - name: Python Kurulumu
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10' # 3.9'dan 3.10'a yükselttik
 
       - name: Kütüphaneleri Yükle
         run: |
