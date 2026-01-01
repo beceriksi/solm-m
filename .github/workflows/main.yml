@@ -1,30 +1,57 @@
-name: Solana AI Scanner Bot
+import requests
+import os
+from google import genai
 
-on:
-  schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+# Ayarlar
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Kodu Klonla
-        uses: actions/checkout@v3
+# Yeni SDK ile Client kurulumu
+client = genai.Client(api_key=GEMINI_KEY)
 
-      - name: Python Kurulumu
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10' # 3.9'dan 3.10'a yükselttik
+def get_ai_opinion(coin_info):
+    prompt = f"Sen bir kripto uzmanısın. Bu coin bir 'narrative' sahibi mi? Bilgi: {coin_info}. Sadece 'POZİTİF: [Neden]' veya 'NEGATİF' yaz."
+    try:
+        # Yeni SDK formatı: models.generate_content
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-001', # En hızlı ve güncel model
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        print(f"AI Hatası: {e}")
+        return "NEGATİF"
 
-      - name: Kütüphaneleri Yükle
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+def scan():
+    url = "https://api.dexscreener.com/latest/dex/search?q=solana"
+    try:
+        res = requests.get(url).json()
+        for pair in res.get('pairs', []):
+            mcap = pair.get('fdv', 0)
+            liq = pair.get('liquidity', {}).get('usd', 0)
+            buys = pair.get('txns', {}).get('m5', {}).get('buys', 0)
+            
+            if 45000 <= mcap <= 85000 and liq >= (mcap * 0.12) and buys > 10:
+                name = pair['baseToken']['name']
+                desc = pair.get('info', {}).get('description', 'Açıklama yok')
+                addr = pair['baseToken']['address']
+                
+                if pair.get('info', {}).get('socials'):
+                    ai_decision = get_ai_opinion(f"İsim: {name}, Açıklama: {desc}")
+                    
+                    if "POZİTİF" in ai_decision:
+                        link = pair['url']
+                        rugcheck_link = f"https://rugcheck.xyz/tokens/{addr}"
+                        msg = (f"🚀 *YENİ NESİL ANALİZ!*\n\n"
+                               f"💎 *{name}*\n"
+                               f"💰 MCAP: {mcap:,}$\n"
+                               f"🧠 AI: {ai_decision.replace('POZİTİF:', '')}\n\n"
+                               f"🔗 [GRAFİK]({link}) | [RUGCHECK]({rugcheck_link})")
+                        
+                        requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}&parse_mode=Markdown")
+    except Exception as e:
+        print(f"Genel Hata: {e}")
 
-      - name: Botu Çalıştır
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python bot.py
+if __name__ == "__main__":
+    scan()
