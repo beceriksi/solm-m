@@ -12,34 +12,33 @@ client = genai.Client(api_key=GEMINI_KEY)
 PROCESSED_TOKENS = set()
 
 def get_ai_narrative_analysis(name, symbol, socials):
-    """AI yorumunu alana kadar dener ve kotayı zorlamaz"""
+    """Gemini 1.5 Flash ile daha stabil ve kota dostu analiz"""
     social_text = "Sosyal medya linkleri mevcut." if socials else "Sosyal medya linki yok."
     
-    # AI'ya daha net bir 'narrative' analizi yaptıralım
     prompt = (f"Bir Solana meme coin uzmanı gibi davran.\n"
               f"Token Adı: {name} ({symbol})\n"
               f"Sosyal Medya: {social_text}\n"
-              f"Bu tokenın temasını ve ismini analiz et. Viral olma potansiyeli var mı?\n"
+              f"Bu tokenın temasını ve viral olma potansiyelini analiz et.\n"
               f"Yanıtına mutlaka 'KARAR: POZİTİF' veya 'KARAR: NEGATİF' ile başla. "
-              f"Ardından nedenini 1 cümleyle Türkçe açıkla.")
+              f"Ardından nedenini 1 kısa cümleyle Türkçe açıkla.")
     
-    # 3 Deneme hakkı veriyoruz
-    for attempt in range(3):
+    for attempt in range(2):
         try:
-            # ÖNEMLİ: Kota dostu olması için her istekten önce 6 saniye bekle
-            time.sleep(6) 
-            response = client.models.generate_content(model='gemini-2.0-flash-001', contents=prompt)
+            # İstek öncesi 10 saniye mola (Google'ı sakinleştirir)
+            time.sleep(10) 
+            # Daha yüksek kotalı 1.5 modelini kullanıyoruz
+            response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
             if response and response.text:
                 return response.text
         except Exception as e:
             if "429" in str(e):
-                print(f"⏳ Kota aşımı, {name} için bekleniyor...", flush=True)
-                time.sleep(15) # Hata alınca 15 saniye komple dur
+                print(f"🛑 Google Blokladı. 60 saniye TAM SESSİZLİK moduna geçiliyor...", flush=True)
+                time.sleep(60)
             else:
                 print(f"⚠️ AI Hatası: {e}", flush=True)
                 break
     
-    return "KARAR: NEGATİF (AI şu an yorum yapamıyor)"
+    return "KARAR: NEGATİF"
 
 def send_telegram(msg):
     try:
@@ -51,7 +50,7 @@ def send_telegram(msg):
         print(f"🚨 Telegram Hatası: {e}")
 
 def scan():
-    print(f"\n📡 [{time.strftime('%H:%M:%S')}] AI Odaklı Tarama Başladı...", flush=True)
+    print(f"\n📡 [{time.strftime('%H:%M:%S')}] Stabil AI Taraması Başladı...", flush=True)
     url = "https://api.dexscreener.com/token-profiles/latest/v1"
     
     try:
@@ -61,7 +60,7 @@ def scan():
         profiles = res.json()
         if not profiles: return
         
-        addr_list = [p['tokenAddress'] for p in profiles[:10]] # Listeyi daraltıp kaliteyi artıralım
+        addr_list = [p['tokenAddress'] for p in profiles[:10]]
         detail_res = requests.get(f"https://api.dexscreener.com/latest/dex/tokens/{','.join(addr_list)}")
         pairs = detail_res.json().get('pairs', [])
 
@@ -75,21 +74,18 @@ def scan():
             total_tx = txs.get('buys', 0) + txs.get('sells', 0)
             has_socials = pair.get('info', {}).get('socials', [])
 
-            # --- SERT KRİTERLER (Sadece kaliteli olanlar AI'ya gitsin) ---
+            # Sert Kriterler: 20k MCAP, 5k Liq, 15+ TX
             if mcap >= 20000 and liq >= 5000 and total_tx >= 15 and (liq/mcap >= 0.10):
                 name = pair['baseToken']['name']
                 symbol = pair['baseToken']['symbol']
                 
                 print(f"🔍 Süzgeçten Geçti: {name}. AI yorumu bekleniyor...", flush=True)
-                
-                # AI Analizi
                 ai_comment = get_ai_narrative_analysis(name, symbol, has_socials)
                 
-                # Sadece AI "POZİTİF" derse gönderiyoruz
                 if "POZİTİF" in ai_comment.upper():
                     clean_comment = ai_comment.replace("KARAR: POZİTİF", "").strip()
                     msg = (
-                        f"🌟 *AI ONAYLI NARRATIVE*\n\n"
+                        f"🌟 *AI ONAYLI NARRATIVE (1.5 Flash)*\n\n"
                         f"📊 *Token:* {name} ({symbol})\n"
                         f"💰 *MCAP:* ${mcap:,.0f}\n"
                         f"💧 *Likidite:* ${liq:,.0f}\n"
@@ -99,8 +95,6 @@ def scan():
                     )
                     send_telegram(msg)
                     print(f"🚀 SİNYAL GÖNDERİLDİ: {name}")
-                else:
-                    print(f"⏭️ AI Pas Geçti: {name}")
                 
                 PROCESSED_TOKENS.add(addr)
 
@@ -108,7 +102,7 @@ def scan():
         print(f"🚨 Tarama Hatası: {e}")
 
 if __name__ == "__main__":
-    send_telegram("🤖 *AI Yorum Odaklı Mod Aktif!*\n\nArtık her sinyalde AI yorumu bulunacak.")
+    send_telegram("🤖 *Stabil AI Modu (1.5 Flash) Aktif!*")
     while True:
         scan()
-        time.sleep(90) # Tarama arasını 1.5 dakikaya çıkardık ki kota dolmasın
+        time.sleep(120) # Tarama arasını 2 dakikaya çıkardık
